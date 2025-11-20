@@ -1,0 +1,8 @@
+{
+    "display_name": "UNO Cloud Game",
+    "requires": [],
+    "author": "s",
+    "version": "1.0.0",
+    "description": "A cloud-based UNO game extension loaded via CDN.",
+    "loading_order": 100
+}
