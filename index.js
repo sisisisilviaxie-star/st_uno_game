@@ -1,4 +1,4 @@
-import { extensions } from "../../../script.js";
+// import { extensions } from "../../../script.js";
 
 // 你的专属 CDN 地址
 const CDN_BASE = "https://cdn.jsdelivr.net/gh/sisisisilviaxie-star/st-uno-game@main/";
