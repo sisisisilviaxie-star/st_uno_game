@@ -1,4 +1,20 @@
-/* 测试代码：让屏幕边缘变红 */
+/* 给酒馆顶部加一条红线，证明 CSS 加载成功 */
 body {
-    border: 5px solid red !important; 
+    border-top: 5px solid #ff0000 !important;
+}
+
+/* UNO 游戏容器 (预设) */
+#uno-game-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 300px;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 20px;
+    border: 2px solid gold;
+    z-index: 20000;
+    text-align: center;
+    display: none; /* 默认隐藏，点按钮才显示 */
 }
