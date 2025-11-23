@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>同层游戏中心</title>
+    <style>
+        body { background-color: #1a1a1a; color: #e0e0e0; font-family: sans-serif; overflow: hidden; margin: 0; padding: 15px; user-select: none;}
+        .header { display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 10px; }
+        #screen-display { background: rgba(0,0,0,0.3); border: 1px solid #333; height: 150px; overflow-y: auto; padding: 10px; border-radius: 5px; white-space: pre-wrap; font-family: monospace; }
+        button { width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        button:disabled { background: #444; color: #888; cursor: wait; }
+        .log-p { color: #4ecdc4; }
+        .log-ai { color: #ff9f43; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <span>🎲 互动桌游</span>
+        <span id="player-name" style="font-size:12px; color:#aaa;">玩家</span>
+    </div>
+    <div id="screen-display"></div>
+    <button id="dice-btn">🎲 掷骰子</button>
+
+    <script>
+        let gameHistory = "";
+        let myName = "玩家";
+
+        $(document).ready(function() {
+            // 1. 初始化
+            if (typeof ST_UserName !== 'undefined') myName = ST_UserName;
+            $('#player-name').text(myName);
+
+            if (typeof ST_InitialData !== 'undefined' && ST_InitialData.trim() !== "") {
+                gameHistory = ST_InitialData;
+                renderHistory();
+            } else {
+                appendLog("系统", "游戏开始...", "color:#888");
+                saveData();
+            }
+
+            // 2. 点击事件
+            $('#dice-btn').click(async function() {
+                const $btn = $(this);
+                $btn.prop('disabled', true).text("对方思考中...");
+
+                // A. 玩家行动
+                const point = Math.floor(Math.random() * 6) + 1;
+                appendLog(myName, `掷出了 ${point} 点`, "log-p");
+                
+                // B. 第一次保存 (存玩家的操作)
+                await saveData();
+
+                // C. 【修正】调用静默生成请求
+                if (window.requestGameAI) {
+                    // 这里的 Prompt 不会发到聊天框，只会发给后台 LLM
+                    const prompt = `这是一个掷骰子游戏。用户(${myName})掷出了 ${point} 点。请你以{{char}}的身份也掷一个骰子，并简短评价。请直接输出内容，不要带标签。`;
+                    await window.requestGameAI(prompt);
+                } else {
+                    console.warn("未找到 requestGameAI");
+                    // 如果没找到接口，手动恢复按钮，免得卡死
+                    $btn.prop('disabled', false).text("🎲 掷骰子");
+                }
+            });
+        });
+
+        // 3. 接收静默生成的结果
+        window.handleAIResponse = async function(aiText) {
+            console.log("收到静默回复:", aiText);
+            
+            // D. 记录 AI 行动
+            const cleanText = aiText.trim();
+            const aiName = (typeof ST_CharName !== 'undefined') ? ST_CharName : "对方";
+            appendLog(aiName, cleanText, "log-ai");
+            
+            // E. 第二次保存 (把 AI 的操作也存进去)
+            // 此时界面还是那一层，只是内容变多了
+            await saveData();
+
+            // F. 恢复按钮
+            $('#dice-btn').prop('disabled', false).text("🎲 掷骰子");
+        };
+
+        function appendLog(name, text, cssClass) {
+            const spanStyle = cssClass.includes(':') ? `style="${cssClass}"` : `class="${cssClass}"`;
+            const newEntry = `<span ${spanStyle}>[${name}]</span> ${text}`;
+            if (gameHistory) gameHistory += "\n";
+            gameHistory += newEntry;
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const $screen = $('#screen-display');
+            $screen.html(gameHistory.replace(/\n/g, "<br>"));
+            $screen.scrollTop($screen[0].scrollHeight);
+        }
+
+        async function saveData() {
+            if (window.saveToCurrentLayer) {
+                await window.saveToCurrentLayer(gameHistory);
+            }
+        }
+    </script>
+</body>
+</html>
