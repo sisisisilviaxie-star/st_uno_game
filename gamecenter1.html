@@ -1,67 +1,57 @@
-<!-- game_center.html -->
-<style>
-    /* 你的游戏机样式 */
-    body { background: #222; color: white; font-family: sans-serif; padding: 20px; }
-    .header { border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 20px; }
-    .user-info { font-size: 0.9em; color: #aaa; }
-</style>
-
 <div class="game-console">
     <div class="header">
-        <h2>同层游戏中心</h2>
-        <!-- 这里直接显示注入的变量 -->
-        <div class="user-info">玩家: <span id="display-name">加载中...</span></div>
+        <h3>同层游戏中心</h3>
+        <div>玩家: <span id="player-name"></span></div>
     </div>
-
+    
     <div class="game-content">
-        <button onclick="playDice()">🎲 掷骰子</button>
-        <div id="result-area" style="margin-top:20px;"></div>
+        <button id="dice-btn" style="padding:10px 20px; font-size:16px;">🎲 掷骰子</button>
+        
+        <!-- 这里显示结果 -->
+        <div id="result-log" style="margin-top:20px; font-size:1.2em; color: cyan;">
+            <!-- 历史结果会显示在这里 -->
+        </div>
     </div>
 </div>
 
 <script>
-    // 【关键】这里不需要定义 userName，因为加载器已经注入了！
-    // 直接使用即可
-    
-    // 初始化
+    // 这里的变量是从正则注入进来的
+    // ST_UserName, ST_InitialData
+
     $(document).ready(function() {
-        // 这里的 userName 就是从正则脚本里传过来的
-        if(typeof userName !== 'undefined') {
-            $('#display-name').text(userName);
+        // 1. 设置名字
+        if(typeof ST_UserName !== 'undefined') {
+            $('#player-name').text(ST_UserName);
+        }
+
+        // 2. 【关键】恢复历史数据
+        // 如果 ST_InitialData 不为空，说明这个气泡里已经存了数据（比如 "掷出了 3 点"）
+        if (typeof ST_InitialData !== 'undefined' && ST_InitialData.trim() !== "") {
+            // 我们的数据可能是纯文本，也可能是 JSON，这里简单处理为文本
+            $('#result-log').text(ST_InitialData);
         } else {
-            $('#display-name').text("未知玩家");
+            $('#result-log').text("准备开始...");
         }
+
+        // 3. 掷骰子点击事件
+        $('#dice-btn').click(function() {
+            // 逻辑计算
+            const point = Math.floor(Math.random() * 6) + 1;
+            const resultText = `掷出了 ${point} 点`;
+
+            // 立即更新 UI 显示（让用户觉得很快）
+            $('#result-log').text(resultText);
+
+            // 4. 【关键】保存回楼层
+            // 这会把 "<GameConsole>掷出了 3 点</GameConsole>" 写回当前消息
+            // 导致当前气泡刷新，数据被永久记录
+            if (window.saveToCurrentLayer) {
+                // 可以在这里加上时间戳或者更多数据
+                // 简单起见，我们只存结果文本
+                window.saveToCurrentLayer(resultText);
+            } else {
+                console.warn("未找到 saveToCurrentLayer 方法，无法保存到同层");
+            }
+        });
     });
-
-    // 全局状态对象（用于被加载器保存/恢复）
-    window.gameState = {
-        lastResult: null
-    };
-
-    // 供加载器调用的恢复函数
-    window.loadGameState = function(data) {
-        if(data && data.lastResult) {
-            $('#result-area').text("恢复上次记录: " + data.lastResult);
-            window.gameState = data;
-        }
-    };
-
-    function playDice() {
-        const point = Math.floor(Math.random() * 6) + 1;
-        const text = `掷出了 ${point} 点`;
-        
-        $('#result-area').text(text);
-        
-        // 更新状态以便保存
-        window.gameState.lastResult = text;
-
-        // 发送给酒馆 (进阶技巧: Slash Command)
-        // 注意：因为这是同层加载，window对象是共享的，可以直接调用 triggerSlash
-        if (window.triggerSlash) {
-            // 延时一点点发送，体验更好
-            setTimeout(() => {
-                window.triggerSlash(`/send [系统消息: ${userName} ${text}] | /trigger`);
-            }, 500);
-        }
-    }
 </script>
